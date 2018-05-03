@@ -12,3 +12,5 @@ set (SOURCES
 	Client/main.cpp) 
  
 add_executable (${PROJECT} ${HEADERS} ${SOURCES})
+
+add_definitions(-std=c++14)
