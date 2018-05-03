@@ -275,7 +275,7 @@ int main(int argc, char** argv)
 	// длина структуры
 
 	// connection socket and struct
-	if (connect(Socket, (struct sockaddr*)&SA, sizeof(SA)) == SOCKET_ERROR)
+	if (connect(Socket, (struct sockaddr*)&SA, sizeof(SA)) == 0)
 	{
 		log.print(Log::error, "main - Socket succed connected");
 		systemMessage("The server does not respond, please try again after a while.");
