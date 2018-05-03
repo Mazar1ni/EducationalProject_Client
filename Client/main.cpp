@@ -60,7 +60,7 @@ bool connected()
 			count++;
 		}
 		mtx.unlock();
-		Sleep(200);
+		//Sleep(200);
 	}
 }
 
@@ -81,7 +81,7 @@ void readMessages(int socket, Log& log)
 	while (true)
 	{
 		// wait message from client
-		int k = recv(socket, buffer, 1024, NULL);
+		int k = recv(socket, buffer, 1024, 0);
 
 		// if k <= 0 then connection loss
 		if (k > 0)
@@ -241,7 +241,7 @@ int main(int argc, char** argv)
 		log.print(Log::error, "main - WSASratup no succes");
 		systemMessage("The library supplied with this software does not support this version of the socket window.\n"
 			"Possible cause : incorrect software installation or loss of required files");
-		system("pause");
+		cin.get();
 		return -1;
 	}
 
@@ -259,7 +259,7 @@ int main(int argc, char** argv)
 	{
 		log.print(Log::error, "main - Socket not created");
 		systemMessage("Socket was not created, please try again after a while.");
-		system("pause");
+		cin.get();
 		return -1;
 	}
 
@@ -279,7 +279,7 @@ int main(int argc, char** argv)
 	{
 		log.print(Log::error, "main - Socket succed connected");
 		systemMessage("The server does not respond, please try again after a while.");
-		system("pause");
+		cin.get();
 		return -1;
 	}
 
@@ -292,7 +292,7 @@ int main(int argc, char** argv)
 	{
 		log.print(Log::warning, "main - Failed to create thread");
 		cout << "Failed to create thread, try restarting the application" << endl;
-		system("pause");
+		cin.get();
 		return -1;
 	}
 
@@ -304,7 +304,7 @@ int main(int argc, char** argv)
 	{
 		log.print(Log::warning, "main - At the moment the server does not respond, or is full, please try again after a while");
 		systemMessage("At the moment the server does not respond, or is full, please try again after a while");
-		system("pause");
+		cin.get();
 		return -1;
 	}
 
@@ -390,7 +390,7 @@ int main(int argc, char** argv)
 				#if defined(_WIN64) || defined(_WIN32)
 				closesocket(Socket);
 				#endif
-				system("pause");
+				cin.get();
 				return 0;
 			}
 			else
