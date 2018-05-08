@@ -3,8 +3,6 @@
 #include <fstream>
 #include <string>
 
-using namespace std;
-
 class Log
 {
 public:
@@ -12,10 +10,10 @@ public:
 	Log();
 	~Log();
 
-	void print(Priority priorityMessage, string message);
-	void setPriority(Priority prior);
+	static void print(Priority priorityMessage, std::string message);
+	static void setPriority(Priority prior);
 
 private:
-	ofstream fout;
-	Priority priority;
+	static std::ofstream fout;
+	static Priority priority;
 };

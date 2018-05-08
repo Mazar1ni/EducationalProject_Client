@@ -27,7 +27,7 @@ using namespace std;
 class Client
 {
 public:
-	Client(int s, Log& l);
+	Client(int s);
 	~Client();
 	void clear();
 	bool connected();
@@ -38,7 +38,6 @@ public:
 
 private:
 	int socket;
-	Log& log;
 
 	mutex mtx;
 	bool isConnected = false;

@@ -2,6 +2,11 @@
 #include "Log.h"
 #include <time.h>
 
+using namespace std;
+
+ofstream Log::fout;
+Log::Priority Log::priority;
+
 Log::Log()
 {
 	//fout.open("log.txt");
@@ -9,10 +14,12 @@ Log::Log()
 
 Log::~Log()
 {
+	/*
 	if (fout.is_open())
 	{
 		fout.close();
 	}
+	*/
 }
 
 void Log::print(Priority priorityMessage, string message)
@@ -21,32 +28,29 @@ void Log::print(Priority priorityMessage, string message)
 	string priorityName;
 	switch (priority)
 	{
-	case error:
-		if (priorityMessage == error)
+	case debug:
+		if (priorityMessage == debug)
 		{
 			isPrint = true;
-			priorityName = "Error";
+			priorityName = "Debug";
 		}
-		break;
-	case warning:
-		if (priorityMessage == warning)
-		{
-			isPrint = true;
-			priorityName = "Warning";
-		}
-		break;
 	case info:
 		if (priorityMessage == info)
 		{
 			isPrint = true;
 			priorityName = "Info";
 		}
-		break;
-	case debug:
-		if (priorityMessage == debug)
+	case warning:
+		if (priorityMessage == warning)
 		{
 			isPrint = true;
-			priorityName = "Debug";
+			priorityName = "Warning";
+		}
+	case error:
+		if (priorityMessage == error)
+		{
+			isPrint = true;
+			priorityName = "Error";
 		}
 		break;
 	}
@@ -77,5 +81,5 @@ void Log::print(Priority priorityMessage, string message)
 void Log::setPriority(Priority prior)
 {
 	priority = prior;
-	fout.open("log.txt");
+	fout.open("log.txt", ios::app);
 }

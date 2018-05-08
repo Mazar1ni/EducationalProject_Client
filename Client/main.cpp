@@ -27,17 +27,16 @@ void systemMessage(string message)
 
 int main(int argc, char** argv)
 {
-	Log log;
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "debug") == 0)
-			log.setPriority(Log::debug);
+			Log::setPriority(Log::debug);
 		else if (strcmp(argv[1], "info") == 0)
-			log.setPriority(Log::info);
+			Log::setPriority(Log::info);
 		else if (strcmp(argv[1], "warning") == 0)
-			log.setPriority(Log::warning);
+			Log::setPriority(Log::warning);
 		else if (strcmp(argv[1], "error") == 0)
-			log.setPriority(Log::error);
+			Log::setPriority(Log::error);
 	}
 
 #if defined(_WIN64) || defined(_WIN32)
@@ -47,7 +46,7 @@ int main(int argc, char** argv)
 	// initialize the use of the Winsock DLL process
 	if (WSAStartup(MAKEWORD(2, 2), &WSData) != 0)
 	{
-		log.print(Log::error, "main - WSASratup no succes");
+		Log::print(Log::error, "main - WSASratup no succes");
 		systemMessage("The library supplied with this software does not support this version of the socket window.\n"
 			"Possible cause : incorrect software installation or loss of required files");
 		cin.get();
@@ -66,7 +65,7 @@ int main(int argc, char** argv)
 
 	if (Socket < 0)
 	{
-		log.print(Log::error, "main - Socket not created");
+		Log::print(Log::error, "main - Socket not created");
 		systemMessage("Socket was not created, please try again after a while.");
 		cin.get();
 		return -1;
@@ -86,13 +85,13 @@ int main(int argc, char** argv)
 	// connection socket and struct
 	if (connect(Socket, (struct sockaddr*)&SA, sizeof(SA)) != 0)
 	{
-		log.print(Log::error, "main - Socket succed connected");
+		Log::print(Log::error, "main - Socket succed connected");
 		systemMessage("The server does not respond, please try again after a while.");
 		cin.get();
 		return -1;
 	}
 
-	Client* client = new Client(Socket, log);
+	Client* client = new Client(Socket);
 
 	return 0;
 }

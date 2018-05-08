@@ -1,6 +1,10 @@
 #include "Client.h"
 
-Client::Client(int s, Log& l) : socket(s), log(l)
+#if defined(__MACH__) || defined(__APPLE__)
+#include <unistd.h>
+#endif
+
+Client::Client(int s) : socket(s)
 {
 	try
 	{
@@ -11,7 +15,7 @@ Client::Client(int s, Log& l) : socket(s), log(l)
 	}
 	catch (...)
 	{
-		log.print(Log::warning, "Client::Client - Failed to create thread");
+		Log::print(Log::warning, "Client::Client - Failed to create thread");
 		cout << "Failed to create thread, try restarting the application" << endl;
 		cin.get();
 		delete this;
@@ -21,7 +25,7 @@ Client::Client(int s, Log& l) : socket(s), log(l)
 	// wait until the thread ends
 	if (!connected())
 	{
-		log.print(Log::warning, "Client::Client - At the moment the server does not respond, or is full, please try again after a while");
+		Log::print(Log::warning, "Client::Client - At the moment the server does not respond, or is full, please try again after a while");
 		systemMessage("At the moment the server does not respond, or is full, please try again after a while");
 		cin.get();
 		delete this;
@@ -65,7 +69,7 @@ bool Client::connected()
 	{
 		mtx.lock();
 		// connection successfully or time out
-		if (isConnected == true || count > 75)
+		if (isConnected == true || count > 10)
 		{
 			mtx.unlock();
 			return isConnected;
@@ -75,7 +79,11 @@ bool Client::connected()
 			count++;
 		}
 		mtx.unlock();
-		Sleep(200);
+	#if defined(__MACH__) || defined(__APPLE__)
+		sleep(1);
+	#else
+		Sleep(1000);
+	#endif
 	}
 }
 
@@ -108,19 +116,19 @@ void Client::readMessages()
 			// authorization successfully
 			if (message.find("@logged") != -1)
 			{
-				log.print(Log::info, "Client::readMessages - You have successfully logged in");
+				Log::print(Log::info, "Client::readMessages - You have successfully logged in");
 				systemMessage("You have successfully logged in");
 			}
 			// authorization not successfully
 			else if (message.find("@not_logged") != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - Identification error: this is name not available");
+				Log::print(Log::debug, "Client::readMessages - Identification error: this is name not available");
 				systemMessage("Identification error: this is name not available, please enter other");
 			}
 			// not authorized
 			else if (message.find("@not_auth") != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - Authorization error: you are not logged in");
+				Log::print(Log::debug, "Client::readMessages - Authorization error: you are not logged in");
 				systemMessage("Authorization error: you are not logged in\n"
 					"To use the capabilities of the application\n"
 					"use @auth your_name");
@@ -128,44 +136,44 @@ void Client::readMessages()
 			// already authorized
 			else if (message.find("@alreadyAuth") != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - You are already authorized");
+				Log::print(Log::debug, "Client::readMessages - You are already authorized");
 				systemMessage("You are already authorized\n"
 					"use @help");
 			}
 			// not created room
 			else if (message.find("@not_create") != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - This is name room not available");
+				Log::print(Log::debug, "Client::readMessages - This is name room not available");
 				systemMessage("This is name room not available, please enter other");
 			}
 			// created room
 			else if (message.find("@create") != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - Room successfully created");
+				Log::print(Log::debug, "Client::readMessages - Room successfully created");
 				systemMessage("Room successfully created");
 			}
 			// not open or created room
 			else if (message.find("@not_room") != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - You are not open or create in room in to use this feature");
+				Log::print(Log::debug, "Client::readMessages - You are not open or create in room in to use this feature");
 				systemMessage("You are not open or create in room in to use this feature");
 			}
 			// not open room
 			else if (message.find("@not_open") != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - Room with this name does not exist");
+				Log::print(Log::debug, "Client::readMessages - Room with this name does not exist");
 				systemMessage("Room with this name does not exist");
 			}
 			// leave room successfully
 			else if (message.find("@leave") != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - You have successfully left the room");
+				Log::print(Log::debug, "Client::readMessages - You have successfully left the room");
 				systemMessage("You have successfully left the room");
 			}
 			// view room
 			else if ((identificator = message.find("@view_room")) != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - view_room");
+				Log::print(Log::debug, "Client::readMessages - view_room");
 				lock_guard<mutex> lock(mtx);
 				message.erase(identificator, message.length());
 				cout << message << endl;
@@ -173,13 +181,13 @@ void Client::readMessages()
 			// open room
 			else if ((identificator = message.find("@open")) != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - open room");
+				Log::print(Log::debug, "Client::readMessages - open room");
 				systemMessage("You have successfully open the room");
 			}
 			// view clients
 			else if ((identificator = message.find("@view_clients")) != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - view_clients");
+				Log::print(Log::debug, "Client::readMessages - view_clients");
 				lock_guard<mutex> lock(mtx);
 				message.erase(identificator, message.length());
 				cout << message << endl;
@@ -187,7 +195,7 @@ void Client::readMessages()
 			// history message
 			else if ((identificator = message.find("@history")) != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - history");
+				Log::print(Log::debug, "Client::readMessages - history");
 				lock_guard<mutex> lock(mtx);
 				message.erase(identificator, message.length());
 				cout << message << endl;
@@ -195,7 +203,7 @@ void Client::readMessages()
 			// receiving a message
 			else if ((identificator = message.find("@send")) != -1)
 			{
-				log.print(Log::debug, "Client::readMessages - send message");
+				Log::print(Log::debug, "Client::readMessages - send message");
 				lock_guard<mutex> lock(mtx);
 				message.erase(identificator, message.length());
 
@@ -212,9 +220,14 @@ void Client::readMessages()
 			// connected successfully
 			else if (message.find("@connected") != -1)
 			{
-				log.print(Log::info, "Client::readMessages - connected");
+				Log::print(Log::info, "Client::readMessages - connected");
 				lock_guard<mutex> lock(mtx);
 				isConnected = true;
+			}
+			else if (message.find("@close_server") != -1)
+			{
+				Log::print(Log::warning, "Client::readMessages - close server");
+				systemMessage("Server closed");
 			}
 		}
 
@@ -247,13 +260,12 @@ void Client::sendMessage()
 		smatch match;
 		if (identificator == "@")
 		{
-
 			if (message.find("@auth") != -1 && checkSyntax("@auth", message))
 			{
 				// check for the number of symbols
 				if (message.size() > 15)
 				{
-					log.print(Log::info, "Client::sendMessage - The name must not be more than 15 symbols");
+					Log::print(Log::info, "Client::sendMessage - The name must not be more than 15 symbols");
 					systemMessage("The name must not be more than 15 symbols");
 					continue;
 				}
@@ -261,7 +273,7 @@ void Client::sendMessage()
 				// checking the spaces in the name
 				if (message.end() != remove(message.begin() + 6, message.end(), ' '))
 				{
-					log.print(Log::info, "Client::sendMessage - Name can not contain spaces");
+					Log::print(Log::info, "Client::sendMessage - Name can not contain spaces");
 					systemMessage("Name can not contain spaces");
 					continue;
 				}
@@ -271,7 +283,7 @@ void Client::sendMessage()
 			// check for the number of symbols
 			else if (message.size() > 500)
 			{
-				log.print(Log::info, "Client::sendMessage - The message must not be more than 500 symbols");
+				Log::print(Log::info, "Client::sendMessage - The message must not be more than 500 symbols");
 				systemMessage("The message must not be more than 500 symbols");
 				continue;
 			}
@@ -307,7 +319,7 @@ void Client::sendMessage()
 			}
 			else if (message == "@quit")
 			{
-				log.print(Log::info, "main - quit");
+				Log::print(Log::info, "main - quit");
 				mtx.lock();
 				cin.get();
 				mtx.unlock();
@@ -315,7 +327,7 @@ void Client::sendMessage()
 			}
 			else
 			{
-				log.print(Log::info, "Client::sendMessage - There is no such command, use help");
+				Log::print(Log::info, "Client::sendMessage - There is no such command, use help");
 				systemMessage("There is no such command, use help (@help)");
 			}
 		}
