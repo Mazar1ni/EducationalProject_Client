@@ -1,93 +1,28 @@
-#include "Client.h"
+#define _CRT_SECURE_NO_WARNINGS
+#include "INetwork.h"
+#include "WinClient.h"
+#include "UnixClient.h"
+
+INetwork::INetwork()
+{
+}
+
+INetwork::~INetwork()
+{
+}
+
+INetwork * INetwork::getNetwork()
+{
+#if defined(_WIN32) || defined (_WIN64)
+	return new WinClient;
+#endif
 
 #if defined(__MACH__) || defined(__APPLE__)
-#include <unistd.h>
-#endif
-
-Client::Client(int s) : socket(s)
-{
-	try
-	{
-		thread t([&](Client* view) { view->readMessages(); }, this);
-		t.detach();
-		//thread readMessage(&Client::readMessages);
-		//readMessage.detach();
-	}
-	catch (...)
-	{
-		Log::print(Log::warning, "Client::Client - Failed to create thread");
-		cout << "Failed to create thread, try restarting the application" << endl;
-		cin.get();
-		delete this;
-	}
-
-	// thread for check connection server
-	// wait until the thread ends
-	if (!connected())
-	{
-		Log::print(Log::warning, "Client::Client - At the moment the server does not respond, or is full, please try again after a while");
-		systemMessage("At the moment the server does not respond, or is full, please try again after a while");
-		cin.get();
-		delete this;
-	}
-
-	cout << "Hello, to use the capabilities of the application" << endl;
-	cout << "use @auth your_name" << endl;
-	cout << "for reference use @help" << endl;
-
-	sendMessage();
-}
-
-Client::~Client()
-{
-#if defined(_WIN64) || defined(_WIN32)
-	closesocket(socket);
+	return new UnixClient;
 #endif
 }
 
-#if defined(_WIN64) || defined(_WIN32)
-
-void Client::clear()
-{
-	system("cls");
-}
-
-#else
-
-void Client::clear()
-{
-	cout << "\x1B[2J\x1B[H";
-}
-
-#endif
-
-bool Client::connected()
-{
-	int count = 0;
-	// check if the connection to the server is established
-	while (true)
-	{
-		mtx.lock();
-		// connection successfully or time out
-		if (isConnected == true || count > 10)
-		{
-			mtx.unlock();
-			return isConnected;
-		}
-		else
-		{
-			count++;
-		}
-		mtx.unlock();
-	#if defined(__MACH__) || defined(__APPLE__)
-		sleep(1);
-	#else
-		Sleep(1000);
-	#endif
-	}
-}
-
-void Client::systemMessage(string message)
+void INetwork::systemMessage(string message)
 {
 	// block mutex, clear screen and write message
 	lock_guard<mutex> lock(mtx);
@@ -95,7 +30,16 @@ void Client::systemMessage(string message)
 	cout << message << endl;
 }
 
-void Client::readMessages()
+bool INetwork::checkSyntax(string identificator, string message)
+{
+	// check the syntax of the message
+	smatch match;
+	regex regSystem("^" + identificator + "\\s\\S+");
+
+	return regex_search(message, match, regSystem);
+}
+
+void INetwork::readMessages()
 {
 	// array for messages received from the client
 	char* buffer = new char[1024];
@@ -104,7 +48,7 @@ void Client::readMessages()
 	while (true)
 	{
 		// wait message from client
-		int k = recv(socket, buffer, 1024, 0);
+		int k = recv(Socket, buffer, 1024, 0);
 
 		// if k <= 0 then connection loss
 		if (k > 0)
@@ -228,23 +172,23 @@ void Client::readMessages()
 			{
 				Log::print(Log::warning, "Client::readMessages - close server");
 				systemMessage("Server closed");
+				quit = true;
+				return;
 			}
+		}
+		else
+		{
+			Log::print(Log::warning, "Client::readMessages - close server");
+			systemMessage("Server closed");
+			quit = true;
+			return;
 		}
 
 		memset(buffer, 0, 1024);
 	}
 }
 
-bool Client::checkSyntax(string identificator, string message)
-{
-	// check the syntax of the message
-	smatch match;
-	regex regSystem("^" + identificator + "\\s\\S+");
-
-	return regex_search(message, match, regSystem);
-}
-
-void Client::sendMessage()
+void INetwork::sendMessage()
 {
 	string message;
 
@@ -255,6 +199,12 @@ void Client::sendMessage()
 		getline(cin, message);
 
 		string identificator = message.substr(0, 1);
+
+		if (quit == true)
+		{
+			delete this;
+			return;
+		}
 
 		// this is system command
 		smatch match;
@@ -278,7 +228,7 @@ void Client::sendMessage()
 					continue;
 				}
 				clear();
-				send(socket, message.c_str(), message.length(), 0);
+				send(Socket, message.c_str(), message.length(), 0);
 			}
 			// check for the number of symbols
 			else if (message.size() > 500)
@@ -292,17 +242,17 @@ void Client::sendMessage()
 				(message == "@history") || (message == "@leave"))
 			{
 				clear();
-				send(socket, message.c_str(), message.length(), 0);
+				send(Socket, message.c_str(), message.length(), 0);
 			}
 			else if (message == "@view_room")
 			{
 				systemMessage("Rooms\n");
-				send(socket, message.c_str(), message.length(), 0);
+				send(Socket, message.c_str(), message.length(), 0);
 			}
 			else if (message == "@view_clients")
 			{
 				systemMessage("Clients\n");
-				send(socket, message.c_str(), message.length(), 0);
+				send(Socket, message.c_str(), message.length(), 0);
 			}
 			else if (message == "@help")
 			{
@@ -320,10 +270,8 @@ void Client::sendMessage()
 			else if (message == "@quit")
 			{
 				Log::print(Log::info, "main - quit");
-				mtx.lock();
-				cin.get();
-				mtx.unlock();
 				delete this;
+				return;
 			}
 			else
 			{
@@ -341,7 +289,7 @@ void Client::sendMessage()
 			}
 
 			message += "@send";
-			send(socket, message.c_str(), message.length(), 0);
+			send(Socket, message.c_str(), message.length(), 0);
 		}
 		else
 		{
@@ -350,4 +298,98 @@ void Client::sendMessage()
 
 		message.clear();
 	}
+}
+
+bool INetwork::connected()
+{
+	int count = 0;
+	// check if the connection to the server is established
+	while (true)
+	{
+		mtx.lock();
+		// connection successfully or time out
+		if (isConnected == true || count > 10)
+		{
+			mtx.unlock();
+			return isConnected;
+		}
+		else
+		{
+			count++;
+		}
+		mtx.unlock();
+		this_thread::sleep_for(chrono::milliseconds(1000));
+	}
+}
+
+void INetwork::createSocket()
+{
+	// socket 
+	// семейство адресов (IPv4 / IPv6 / (IPX/SPX) / NetBIOS / AppleTalk / Bluetooth etc)
+	// тип сокета (tcp / udp etc)
+	// организация заголовков (tcp / udp / icmp / igmp etc)
+
+	// create socket
+	Socket = socket(AF_INET, SOCK_STREAM, 6);
+
+	if (Socket < 0)
+	{
+		Log::print(Log::error, "main - Socket not created");
+		systemMessage("Socket was not created, please try again after a while.");
+		cin.get();
+		delete this;
+		return;
+	}
+
+	// create struct for bind to her socket
+	struct sockaddr_in SA;
+	SA.sin_family = AF_INET;
+	SA.sin_port = htons(7070);
+	SA.sin_addr.s_addr = inet_addr("192.168.60.96");
+
+	// connect 
+	// socket
+	// указатель на структуру, к которой должно быть установлено соединение (семейство адресов, порт, ip)
+	// длина структуры
+
+	// connection socket and struct
+	if (connect(Socket, (struct sockaddr*)&SA, sizeof(SA)) != 0)
+	{
+		Log::print(Log::error, "main - Socket succed connected");
+		systemMessage("The server does not respond, please try again after a while.");
+		cin.get();
+		delete this;
+		return;
+	}
+
+	try
+	{
+		thread readMessage([&](INetwork* view) { view->readMessages(); }, this);
+		readMessage.detach();
+	}
+	catch (...)
+	{
+		Log::print(Log::warning, "Client::Client - Failed to create thread");
+		cout << "Failed to create thread, try restarting the application" << endl;
+		cin.get();
+		delete this;
+		return;
+	}
+
+	// thread for check connection server
+	// wait until the thread ends
+	if (!connected())
+	{
+		Log::print(Log::warning, "Client::Client - At the moment the server does not respond, or is full, please try again after a while");
+		systemMessage("At the moment the server does not respond, or is full, please try again after a while");
+		cin.get();
+		delete this;
+		return;
+	}
+
+	cout << "Hello, to use the capabilities of the application" << endl;
+	cout << "use @auth your_name" << endl;
+	cout << "for reference use @help" << endl;
+
+	sendMessage();
 }
